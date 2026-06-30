@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #fef6e4 0%, #f3d2c1 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+      color: #2d2d2d;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 14px;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      font-size: 15px;
+      resize: vertical;
+      margin-bottom: 16px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #f3a683;
+    }
+
+    button {
+      background: #f3a683;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #ec8b66;
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    #result-container {
+      margin-top: 24px;
+      line-height: 1.6;
+    }
+
+    .recipe-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #2d2d2d;
+    }
+
+    .loading {
+      text-align: center;
+      color: #888;
+      padding: 20px;
+    }
+
+    .error {
+      background: #fde8e8;
+      color: #c0392b;
+      padding: 14px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍳 What's in Your Fridge?</h1>
+    <p class="subtitle">Type your ingredients, and we'll cook up an idea.</p>
+
+    <textarea
+      id="ingredients-input"
+      placeholder="e.g. chicken breast, rice, broccoli, soy sauce, garlic"
+    ></textarea>
+
+    <button id="generate-btn">Generate Recipe</button>
+
+    <div id="result-container"></div>
+  </div>
+  <script>
+    const generateBtn = document.getElementById("generate-btn");
+    const ingredientsInput = document.getElementById("ingredients-input");
+    const resultContainer = document.getElementById("result-container");
+
+    generateBtn.addEventListener("click", generateRecipe);
+
+    async function generateRecipe() {
+      const ingredients = ingredientsInput.value.trim();
+
+      if (!ingredients) {
+        resultContainer.innerHTML = `<div class="error">Please enter some ingredients first!</div>`;
+        return;
+      }
+
+      generateBtn.disabled = true;
+      generateBtn.textContent = "Cooking up ideas...";
+      resultContainer.innerHTML = `<div class="loading">🍳 Thinking of something delicious...</div>`;
+
+      try {
+        const response = await fetch("/api/generate-recipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredients }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayRecipe(data.recipe);
+      } catch (error) {
+        console.error(error);
+        resultContainer.innerHTML = `<div class="error">Something went wrong. Please try again.</div>`;
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Generate Recipe";
+      }
+    }
+
+    function displayRecipe(text) {
+      const titleMatch = text.match(/TITLE:\s*(.+)/);
+      const ingredientsMatch = text.match(/INGREDIENTS:\s*([\s\S]*?)STEPS:/);
+      const stepsMatch = text.match(/STEPS:\s*([\s\S]*)/);
+
+      const title = titleMatch ? titleMatch[1].trim() : "Your Recipe";
+      const ingredientsList = ingredientsMatch
+        ? ingredientsMatch[1].trim().split("\n").map(line => `<li>${line.replace(/^-/, "").trim()}</li>`).join("")
+        : "";
+      const stepsList = stepsMatch
+        ? stepsMatch[1].trim().split("\n").map(line => `<li>${line.replace(/^\d+\./, "").trim()}</li>`).join("")
+        : "";
+
+      resultContainer.innerHTML = `
+        <div class="recipe-title">${title}</div>
+        <strong>Ingredients</strong>
+        <ul>${ingredientsList}</ul>
+        <strong>Steps</strong>
+        <ol>${stepsList}</ol>
+      `;
+    }
+  </script>
+</body>
+</html>
