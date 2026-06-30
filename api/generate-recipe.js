@@ -38,7 +38,9 @@ Keep it realistic and only use common pantry staples in addition to what was lis
   );
 
   if (!response.ok) {
-    return res.status(502).json({ error: "Gemini API error" });
+    const errBody = await response.text();
+    console.error("Gemini error", response.status, errBody);
+    return res.status(502).json({ error: "Gemini API error", detail: errBody });
   }
 
   const data = await response.json();
